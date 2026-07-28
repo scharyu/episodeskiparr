@@ -1,5 +1,7 @@
 # episodeskiparr
 
+![Build](https://github.com/scharyu/episodeskiparr/actions/workflows/docker-publish.yml/badge.svg)
+![Release](https://img.shields.io/github/v/release/scharyu/episodeskiparr)
 ![License](https://img.shields.io/badge/license-GPL--3.0-blue)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 
