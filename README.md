@@ -77,7 +77,7 @@ All configuration is via environment variables:
 ```yaml
 services:
   episodeskiparr:
-    build: .
+    image: ghcr.io/scharyu/episodeskiparr:latest
     container_name: episodeskiparr
     restart: unless-stopped
     environment:
@@ -94,6 +94,10 @@ services:
 Copy `.env.example` to `.env`, fill in your real values, and Docker Compose
 will pick it up automatically — `.env` is git-ignored, so your credentials
 never end up in version control.
+
+Prebuilt images are published to GHCR for `linux/amd64` and `linux/arm64`
+on every push to `main` (`:latest`) and on version tags (`:X.Y.Z`, `:X.Y`).
+To build from source instead, replace `image:` with `build: .`.
 
 ## API
 
