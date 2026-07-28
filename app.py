@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-episodeskiparr — companion for autobrr and packgrabbarr.
+episodeskiparr — companion for packgrabbarr (or anything else that can POST
+a release name to /api/skip).
 
 Given a grabbed season-pack release, looks up which episodes already exist
 in Sonarr, finds the matching torrent in qBittorrent, and sets file priority
@@ -42,7 +43,7 @@ SONARR_API_KEY = os.environ.get("SONARR_API_KEY", "")
 
 QB_CATEGORY = os.environ.get("QB_CATEGORY", "tv-sonarr")
 
-# How long to wait for the torrent to appear in qB after autobrr pushes it.
+# How long to wait for the torrent to appear in qB after the release is grabbed.
 POLL_TIMEOUT  = int(os.environ.get("POLL_TIMEOUT", "60"))   # seconds
 POLL_INTERVAL = float(os.environ.get("POLL_INTERVAL", "2")) # seconds
 
@@ -67,7 +68,7 @@ app = Flask(__name__)
 # Parsing the release / torrent name
 # --------------------------------------------------------------------------- #
 def parse_season(name: str):
-    """Extract the season number from a release name (RuTracker or scene style). Returns int or None."""
+    """Extract the season number from a release name (localized/Cyrillic or scene style). Returns int or None."""
     # S5E1-7 / S05E01-08 / S5 / S05
     m = re.search(r"[Ss](\d{1,2})(?:[EeЕе]\d|\b)", name)
     if m:
@@ -83,14 +84,14 @@ def parse_season(name: str):
 
 
 def parse_title_candidates(name: str):
-    """Return candidate show titles parsed out of a RuTracker- or scene-style release name, most specific first."""
+    """Return candidate show titles parsed out of a localized/Cyrillic- or scene-style release name, most specific first."""
     # Cut everything from the season marker onward
     cut = re.split(r"[Ss]\d{1,2}[EeЕе]", name)[0]
     cut = re.split(r"[Ss]\d{1,2}\b", cut)[0]      # also cut bare "S05"
     cut = re.split(r"[Сс]езон", cut)[0]
 
     cands = []
-    # RuTracker: split on '/'
+    # Localized style ("Show Title / Original Title / S05E01-08 ..."): split on '/'
     for p in cut.split("/"):
         p = re.sub(r"\[.*", "", p).strip()
         p = p.strip(" .-")
@@ -272,7 +273,8 @@ def process(torrent_name: str, keep_episodes=None, season_override=None):
         log.info("Series '%s' S%02d keep-list from caller: %s",
                  series_title, season, sorted(keep_set))
     else:
-        # Legacy path (e.g. autobrr): keep only episodes we don't already have.
+        # Fallback path (no explicit keep-list given): keep only episodes we
+        # don't already have.
         have = episodes_with_files(series_id, season)
 
         # Inject fake episodes for testing
@@ -364,7 +366,7 @@ def skip():
         return jsonify({"error": "missing 'name'"}), 400
 
     # Optional explicit instructions from packgrabbarr: which episodes to KEEP
-    # (download) and the season. Absent for autobrr -> legacy have-based logic.
+    # (download) and the season. Absent -> fallback have-based logic.
     episodes = data.get("episodes")
     if episodes is not None:
         try:
@@ -385,8 +387,9 @@ def skip():
         log.exception("processing failed")
         return jsonify({"error": str(e)}), 500
 
-    # autobrr's external filter expects a specific status (we use 250) to mean
-    # "approved / proceed". We always approve the grab; skipping is best-effort.
+    # Always return 250 — autobrr's "approved" external-filter convention,
+    # kept for compatibility with autobrr-style webhook callers. The grab is
+    # always approved; skipping is best-effort.
     code = 250 if ok else 250
     return jsonify({"ok": ok, "message": msg}), code
 

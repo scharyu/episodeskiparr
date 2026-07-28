@@ -21,29 +21,30 @@ torrents after import.
 ## How it fits in the pipeline
 
 ```
-autobrr (webhook)    ─┐
-                       ├─▶ episodeskiparr ─▶ qBittorrent (downloads only what's missing)
-packgrabbarr (HTTP)  ─┘          │
+packgrabbarr ─▶ episodeskiparr ─▶ qBittorrent (downloads only what's missing)
+                                  │
                                   ▼
-                            Sonarr import ─▶ Decluttarr (cleans up the torrent)
+                                  Sonarr import ─▶ Decluttarr (cleans up the torrent)
 ```
 
-episodeskiparr has no direct integration with Decluttarr — they're just
-independent services designed to coexist in the same Sonarr/qBittorrent
-pipeline. [packgrabbarr](https://github.com/scharyu/packgrabbarr) is a
-sibling project that force-grabs season packs Sonarr would otherwise reject,
-then calls episodeskiparr to trim them down to what's needed.
+episodeskiparr doesn't care who calls `/api/skip`.
+[packgrabbarr](https://github.com/scharyu/packgrabbarr) — a sibling project
+that force-grabs season packs Sonarr would otherwise reject — is the primary
+integration, but a Sonarr "on grab" webhook, autobrr, or any script that can
+POST a release name works too. There's no direct integration with
+Decluttarr either — they're just independent services designed to coexist
+in the same Sonarr/qBittorrent pipeline.
 
 ## Features
 
-- Parses both RuTracker-style and scene-style release names
+- Parses both localized/Cyrillic-tracker-style and scene-style release names
 - Looks up existing episodes via the Sonarr API
 - Finds the torrent in qBittorrent by Sonarr's queue infohash, falling back
   to fuzzy name matching
 - Sets per-file priority to skip episodes you already have
-- Two modes: legacy "have"-based skipping (autobrr) and explicit keep-lists
-  (packgrabbarr), the latter allowing a single episode to be upgraded out of
-  a pack
+- Two modes: explicit keep-lists (used by packgrabbarr, allows a single
+  episode to be upgraded out of a pack) and a "have"-based fallback for
+  callers that don't supply one
 - Optional token-authenticated API
 
 ## Requirements
@@ -101,15 +102,16 @@ To build from source instead, replace `image:` with `build: .`.
 
 ## API
 
-- `POST /api/skip` — body `{"name": "<release name>", "season": <int>, "episodes": [<int>, ...]}` (`season`/`episodes` are optional; when omitted, episodeskiparr falls back to asking Sonarr what you already have). Returns `{"ok": bool, "message": str}` with HTTP 250 (autobrr's "approved" convention).
+- `POST /api/skip` — body `{"name": "<release name>", "season": <int>, "episodes": [<int>, ...]}` (`season`/`episodes` are optional; when omitted, episodeskiparr falls back to asking Sonarr what you already have). Returns `{"ok": bool, "message": str}` with HTTP 250, a status code borrowed from autobrr's "approved" external-filter convention for compatibility with autobrr-style webhook callers.
 - `GET /health` — liveness check.
 
 ## Security
 
 `API_TOKEN` is unset (disabled) by default — episodeskiparr is meant to sit
-on an internal Docker network reachable only by autobrr/packgrabbarr. If you
-expose the port more broadly, set `API_TOKEN` and require it via
-`?token=...` or an `X-API-Token` header.
+on an internal Docker network reachable only by whatever calls it
+(packgrabbarr, a Sonarr webhook, etc.). If you expose the port more
+broadly, set `API_TOKEN` and require it via `?token=...` or an
+`X-API-Token` header.
 
 If `QB_USER`/`QB_PASS` are left unset, episodeskiparr skips qBittorrent login
 entirely and relies on qBittorrent's own "bypass authentication for clients
@@ -127,4 +129,3 @@ is rejected at startup.
 - [Sonarr](https://github.com/Sonarr/Sonarr)
 - [qBittorrent](https://github.com/qbittorrent/qBittorrent)
 - [Decluttarr](https://github.com/ManiMatter/decluttarr)
-- [autobrr](https://github.com/autobrr/autobrr)
