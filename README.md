@@ -12,7 +12,7 @@ matching torrent in qBittorrent, and sets file priority to `0` ("do not
 download") on the episodes you already have. qBittorrent then only pulls
 down what's actually missing.
 
-Unlike [seasonpackarr](https://github.com/santiagosayshey/seasonpackarr), it
+Unlike [seasonpackarr](https://github.com/nuxencs/seasonpackarr), it
 doesn't rely on hardlinks, identical release groups, or seeding — it matches
 purely by episode number, so it works with mixed release groups and
 alongside [Decluttarr](https://github.com/ManiMatter/decluttarr) removing
